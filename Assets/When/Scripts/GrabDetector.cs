@@ -48,13 +48,12 @@ namespace When {
             } else {
                 if (hand.GrabStrength > _activateGrabThreshold) {
                     ChangeGrabState(true);
+                    return;
                 }
             }
-
-            if (_isGrabbing) {
-                _grabPos = _handModel.transform.position;
-                _grabRotation = _handModel.transform.rotation;
-            }
+            
+            _grabPos = hand.PalmPosition.ToUnityScaled();
+            //_grabRotation = hand.;
         }
 
         void ChangeGrabState(bool shouldBeGrabbing) {
@@ -67,6 +66,16 @@ namespace When {
                     if (OnFinish != null) OnFinish(this);
                 }
             }
+        }
+
+        void OnDisable() {
+            StopAllCoroutines();
+            ChangeGrabState(false);
+        }
+
+        void OnDestroy() {
+            StopAllCoroutines();
+            ChangeGrabState(false);
         }
     }
 }

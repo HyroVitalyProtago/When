@@ -56,21 +56,21 @@ namespace When {
             }
 
             float pinchDistance = hand.PinchDistance * MM_TO_M;
-            transform.rotation = hand.Basis.Rotation();
+            _pinchRotation = hand.Basis.Rotation();
 
             var fingers = hand.Fingers;
-            transform.position = Vector3.zero;
+            _pinchPos = Vector3.zero;
             for (int i = 0; i < fingers.Count; i++) {
                 Finger finger = fingers[i];
                 if (finger.Type == Finger.FingerType.TYPE_INDEX ||
                     finger.Type == Finger.FingerType.TYPE_THUMB) {
-                    transform.position += finger.Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
+                    _pinchPos += finger.Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
                 } else if (!finger.IsExtended) { // other fingers need to be extended
                     ChangePinchState(false);
                     return;
                 }
             }
-            transform.position /= 2.0f;
+            _pinchPos /= 2.0f;
 
             if (_isPinching) {
                 if (pinchDistance > _desactivatePinchDist) {
@@ -83,10 +83,10 @@ namespace When {
                 }
             }
 
-            if (_isPinching) {
-                _pinchPos = transform.position;
-                _pinchRotation = transform.rotation;
-            }
+            //if (_isPinching) {
+            //    _pinchPos = transform.position;
+            //    _pinchRotation = transform.rotation;
+            //}
         }
 
         void ChangePinchState(bool shouldBePinching) {

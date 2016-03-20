@@ -7,32 +7,33 @@ using When.Interfaces;
 namespace When {
 
     /// <summary>
-    /// A basic utility class to aid in creating pinch based actions.
+    /// An advanced utility class to aid in creating pinch based actions.
     /// Once linked with an IHandModel, it can be used to detect pinch gestures that the hand makes.
+    /// 
+    /// Gesture definition
+    /// - Thumb pseudo-extended
+    /// - Unique "movement" of index finger
     /// </summary>
     [RequireComponent(typeof(IHandModel))]
     public class AdvancedPinchDetector : MonoBehaviour, ITransform {
         public event Action<ITransform> OnBegin, OnFinish;
 
-        const float MM_TO_M = 0.001f;
-
-        [SerializeField] float deltaThershold;
-
-        [SerializeField]
-        [Range(0, Mathf.Infinity)]
-        float _activatePinchDist = 0.03f;
-        [SerializeField]
-        [Range(0, Mathf.Infinity)]
-        float _desactivatePinchDist = 0.04f;
+        const float MM_TO_M = 0.001f; // millimeters to meters
+        
+        [SerializeField] float _activatePinchDist = 0.02f;
+        [SerializeField] float _desactivatePinchDist = 0.03f;
+        [SerializeField] float _grabStrengthThreshold = 0.5f;
+        [SerializeField] float _pinchStrengthThreshold = 0.5f;
 
         IHandModel _handModel = null;
         Hand _hand = null;
-        //bool _isPinching = false;
+        bool _isPinching = false;
         bool _isCancelled = false;
-        Vector3 _lastIndexPos, _lastThumbPos;
+        
         float _pinchDistance = 0;
-        bool _indexDeltaToThumb = false;
-        bool _thumbExtended = false;
+        float _grabStrength = 0;
+        float _palmNormalDotCenterEye = 0;
+        float _pinchStrength = 0;
 
         //float _lastPinchTime = 0.0f;
         //float _lastUnpinchTime = 0.0f;
@@ -40,8 +41,26 @@ namespace When {
         Vector3 _pinchPos;
         Quaternion _pinchRotation;
 
+        Transform centerEyeAnchor;
+
+        bool IsPinching {
+            get { return _isPinching; }
+            set {
+                if (_isPinching != value) {
+                    if (value) {
+                        if (OnBegin != null) OnBegin(this);
+                    } else {
+                        if (OnFinish != null) OnFinish(this);
+                    }
+                }
+                _isPinching = value;
+            }
+        }
+
         // Activate distance cannot be greater than deactivate distance
         void OnValidate() {
+            _activatePinchDist = Mathf.Max(_activatePinchDist, 0);
+            _desactivatePinchDist = Mathf.Max(_desactivatePinchDist, 0);
             if (_activatePinchDist > _desactivatePinchDist) {
                 _desactivatePinchDist = _activatePinchDist;
             }
@@ -49,6 +68,7 @@ namespace When {
 
         void Awake() {
             _handModel = GetComponent<IHandModel>();
+            centerEyeAnchor = GameObject.FindGameObjectWithTag("MainCamera").transform; // TODO serialized property ?
         }
 
         void OnEnable() {
@@ -68,62 +88,57 @@ namespace When {
                 return;
             }
 
+            _palmNormalDotCenterEye = Vector3.Dot(_hand.PalmNormal.ToVector3(), centerEyeAnchor.forward);
             _pinchDistance = _hand.PinchDistance * MM_TO_M;
+            _grabStrength = _hand.GrabStrength;
+            _pinchStrength = _hand.PinchStrength;
             _pinchRotation = _hand.Basis.Rotation();
-
-            Vector3 deltaIndex = Vector3.zero, deltaThumb = Vector3.zero;
-
-            var fingers = _hand.Fingers;
             _pinchPos = Vector3.zero;
-            for (int i = 0; i < fingers.Count; i++) {
-                Finger finger = fingers[i];
-                if (finger.Type == Finger.FingerType.TYPE_INDEX || finger.Type == Finger.FingerType.TYPE_THUMB) {
-                    Vector3 pos = finger.Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
-
-                    _pinchPos += pos;
-
-                    if (finger.Type == Finger.FingerType.TYPE_INDEX) {
-                        deltaIndex = pos - _lastIndexPos;
-                        _lastIndexPos = pos;
-                    } else {
-                        _thumbExtended = finger.IsExtended;
-                        deltaThumb = pos - _lastThumbPos;
-                        _lastThumbPos = pos;
-                    }
+            for (int i = 0; i < _hand.Fingers.Count; i++) {
+                Finger finger = _hand.Fingers[i];
+                if (finger.Type == Finger.FingerType.TYPE_THUMB || finger.Type == Finger.FingerType.TYPE_INDEX) {
+                    _pinchPos += finger.Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
                 }
             }
             _pinchPos /= 2.0f;
-
-            _indexDeltaToThumb = Vector3.Angle(deltaIndex, _lastThumbPos - _lastIndexPos) < deltaThershold;
         }
 
         IEnumerator Recognizer() {
-            _isCancelled = false;
-            yield return null;
+            while (true) {
+                do {
+                    // Reset
+                    _isCancelled = false;
+                    yield return null;
 
-            // OutOfRange
-            while (_pinchDistance < _desactivatePinchDist) { _isCancelled = false; yield return null; }
-            
-            // Possible
-            while (!_isCancelled && _indexDeltaToThumb && _thumbExtended && _pinchDistance > _activatePinchDist) { yield return null; }
+                    // OutOfRange
+                    while (_isCancelled || _pinchDistance < _desactivatePinchDist || _palmNormalDotCenterEye < 0) {
+                        _isCancelled = false;
+                        yield return null;
+                    }
 
-            // Fail
-            if (_isCancelled || !_indexDeltaToThumb || !_thumbExtended) { StartCoroutine(Recognizer()); yield break; }
+                    // Possible
+                    while (RequiredCond() && _pinchDistance > _activatePinchDist) { yield return null; }
+                } while (!RequiredCond()); // Fail
 
-            // Recognized !
-            if (OnBegin != null) OnBegin(this);
-            while (!_isCancelled && _pinchDistance < _desactivatePinchDist) { yield return null; }
-            if (OnFinish != null) OnFinish(this);
+                // Recognized !
+                IsPinching = true;
+                while (!_isCancelled && _pinchDistance < _desactivatePinchDist) { yield return null; }
+                IsPinching = false;
+            }
+        }
 
-            StartCoroutine(Recognizer());
+        bool RequiredCond() {
+            return !_isCancelled && _grabStrength < _grabStrengthThreshold && _palmNormalDotCenterEye > 0;
         }
 
         void OnDisable() {
-            _isCancelled = true;
+            StopAllCoroutines();
+            IsPinching = false;
         }
 
         void OnDestroy() {
-            _isCancelled = true;
+            StopAllCoroutines();
+            IsPinching = false;
         }
     }
 }

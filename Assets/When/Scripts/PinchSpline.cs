@@ -13,18 +13,18 @@ namespace When {
         [SerializeField] [Range(3, 24)] int _drawResolution = 8;
         [SerializeField] [Range(0, 1)] float _minSegmentLength = 0.005f;
 
-        readonly Dictionary<IPosition, Entry> _entries = new Dictionary<IPosition, Entry>();
+        readonly Dictionary<ITransform, Entry> _entries = new Dictionary<ITransform, Entry>();
 
         void Start() {}
 
-        public void OnBegin(IPosition iPosition) {
+        public void OnBegin(ITransform iPosition) {
             if (!_entries.ContainsKey(iPosition)) {
                 _entries.Add(iPosition, new Entry(this, iPosition));
             }
             _entries[iPosition].Start();
         }
 
-        public void OnFinish(IPosition iPosition) {
+        public void OnFinish(ITransform iPosition) {
             _entries[iPosition].Stop();
         }
 

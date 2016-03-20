@@ -30,7 +30,7 @@ namespace When {
 
         void Stop() {
             StopAllCoroutines();
-            _cube.GetComponent<Rigidbody>().isKinematic = false;
+            //_cube.AddComponent<Rigidbody>();
         }
 
         IEnumerator Create() {

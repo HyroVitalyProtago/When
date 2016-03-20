@@ -13,10 +13,13 @@ using When.Interfaces;
 // TODO don't collide on release
 public class GrabbableObject : MonoBehaviour {
 
+    [SerializeField] Collider collider;
+
     public bool IsGrabbed { get; protected set; }
     public bool IsHovered { get; protected set; }
     
     Dictionary<GrabDetector, int> _grabDetectors = new Dictionary<GrabDetector, int>();
+    Vector3 origPos, deltaPos;
 
     public virtual void OnStartHover() {
         IsHovered = true;
@@ -30,12 +33,16 @@ public class GrabbableObject : MonoBehaviour {
         IsGrabbed = true;
         IsHovered = false;
         StopAllCoroutines();
+        //Rigidbody rigidbody = gameObject.GetComponent<Rigidbody>();
+        //if (rigidbody != null) Destroy(rigidbody);
         StartCoroutine(Grab(iTransform));
     }
 
     IEnumerator Grab(ITransform iTransform) {
+        origPos = transform.position;
+        deltaPos = iTransform.Position;
         while (IsGrabbed) {
-            transform.position = iTransform.Position;
+            transform.position = origPos + iTransform.Position - deltaPos;
             transform.rotation = iTransform.Rotation;
             yield return null;
         }
@@ -43,27 +50,30 @@ public class GrabbableObject : MonoBehaviour {
 
     public virtual void OnRelease(ITransform iTransform) {
         IsGrabbed = false;
+        //gameObject.AddComponent<Rigidbody>();
     }
 
-    void OnCollisionEnter(Collision other) {
+    void OnTriggerEnter(Collider other) {
+        if (other != collider) return;
         GrabDetector grabDetector = other.gameObject.GetComponentInParent<GrabDetector>();
         if (grabDetector != null) {
             if (!_grabDetectors.ContainsKey(grabDetector)) {
                 _grabDetectors.Add(grabDetector, 0);
+                grabDetector.OnFinish += OnRelease; // TODO better... (object is released when a hand finish grab, even if it's not the good one...)
             }
             if (++_grabDetectors[grabDetector] == 1) {
                 grabDetector.OnBegin += OnGrab;
-                grabDetector.OnFinish += OnRelease;
             }
         }
     }
 
-    void OnCollisionExit(Collision other) {
+    void OnTriggerExit(Collider other) {
+        if (other != collider) return;
         GrabDetector grabDetector = other.gameObject.GetComponentInParent<GrabDetector>();
         if (grabDetector != null) {
             if (--_grabDetectors[grabDetector] == 0) {
                 grabDetector.OnBegin -= OnGrab;
-                grabDetector.OnFinish -= OnRelease;
+                //grabDetector.OnFinish -= OnRelease;
             }
         }
     }
