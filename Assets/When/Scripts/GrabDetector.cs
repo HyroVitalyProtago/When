@@ -18,6 +18,7 @@ namespace When {
         Quaternion _grabRotation;
 
         public Vector3 Position { get { return _grabPos; } }
+        public Vector3 DeltaPosition { get { return _grabPos; } }
         public Quaternion Rotation { get { return _grabRotation; } }
         public Vector3 Scale { get { return Vector3.one; } }
 

@@ -54,24 +54,26 @@ public class GrabbableObject : MonoBehaviour {
     }
 
     void OnTriggerEnter(Collider other) {
-        if (other != collider) return;
         GrabDetector grabDetector = other.gameObject.GetComponentInParent<GrabDetector>();
         if (grabDetector != null) {
             if (!_grabDetectors.ContainsKey(grabDetector)) {
                 _grabDetectors.Add(grabDetector, 0);
-                grabDetector.OnFinish += OnRelease; // TODO better... (object is released when a hand finish grab, even if it's not the good one...)
+                grabDetector.OnFinish += (ITransform iT) => {
+                    OnRelease(iT);
+                }; // TODO better... (object is released when a hand finish grab, even if it's not the good one...)
             }
             if (++_grabDetectors[grabDetector] == 1) {
+                OnStartHover();
                 grabDetector.OnBegin += OnGrab;
             }
         }
     }
 
     void OnTriggerExit(Collider other) {
-        if (other != collider) return;
         GrabDetector grabDetector = other.gameObject.GetComponentInParent<GrabDetector>();
         if (grabDetector != null) {
             if (--_grabDetectors[grabDetector] == 0) {
+                OnStopHover();
                 grabDetector.OnBegin -= OnGrab;
                 //grabDetector.OnFinish -= OnRelease;
             }

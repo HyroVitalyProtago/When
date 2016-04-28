@@ -45,6 +45,7 @@ namespace When {
         public float LastPinchTime { get { return _lastPinchTime; } }
         public float LastUnpinchTime { get { return _lastUnpinchTime; } }
         public Vector3 Position { get { return _pinchPos; } }
+        public Vector3 DeltaPosition { get { return _pinchPos; } }
         public Quaternion Rotation { get { return _pinchRotation; } }
         public Vector3 Scale { get { return Vector3.one; } }
 

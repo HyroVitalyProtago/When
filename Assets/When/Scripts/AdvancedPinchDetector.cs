@@ -25,6 +25,8 @@ namespace When {
         [SerializeField] float _grabStrengthThreshold = 0.5f;
         [SerializeField] float _pinchStrengthThreshold = 0.5f;
 
+        [SerializeField] AudioSource _beginAudioSource;
+
         IHandModel _handModel = null;
         Hand _hand = null;
         bool _isPinching = false;
@@ -38,19 +40,27 @@ namespace When {
         //float _lastPinchTime = 0.0f;
         //float _lastUnpinchTime = 0.0f;
 
-        Vector3 _pinchPos;
+        Vector3 _pinchPos, _lastPinchPos;
         Quaternion _pinchRotation;
 
         Transform centerEyeAnchor;
+
+        IEnumerator _currentEnumerator;
 
         bool IsPinching {
             get { return _isPinching; }
             set {
                 if (_isPinching != value) {
                     if (value) {
-                        if (OnBegin != null) OnBegin(this);
+                        if (OnBegin != null) {
+                            _beginAudioSource.pitch = UnityEngine.Random.Range(1f, 3f);
+                            _beginAudioSource.Play();
+                            OnBegin(this);
+                        }
                     } else {
-                        if (OnFinish != null) OnFinish(this);
+                        if (OnFinish != null) {
+                            OnFinish(this);
+                        }
                     }
                 }
                 _isPinching = value;
@@ -72,12 +82,14 @@ namespace When {
         }
 
         void OnEnable() {
-            StartCoroutine(Recognizer());
+            _currentEnumerator = Recognizer();
+            StartCoroutine(_currentEnumerator);
         }
 
         //public float LastPinchTime { get { return _lastPinchTime; } }
         //public float LastUnpinchTime { get { return _lastUnpinchTime; } }
         public Vector3 Position { get { return _pinchPos; } }
+        public Vector3 DeltaPosition { get { return _lastPinchPos /*- _pinchPos*/; } }
         public Quaternion Rotation { get { return _pinchRotation; } }
         public Vector3 Scale { get { return Vector3.one; } }
 
@@ -87,12 +99,13 @@ namespace When {
                 _isCancelled = true;
                 return;
             }
-
+            
             _palmNormalDotCenterEye = Vector3.Dot(_hand.PalmNormal.ToVector3(), centerEyeAnchor.forward);
             _pinchDistance = _hand.PinchDistance * MM_TO_M;
             _grabStrength = _hand.GrabStrength;
             _pinchStrength = _hand.PinchStrength;
             _pinchRotation = _hand.Basis.Rotation();
+            _lastPinchPos = _hand.PalmVelocity.ToUnityScaled(); // _pinchPos;
             _pinchPos = Vector3.zero;
             for (int i = 0; i < _hand.Fingers.Count; i++) {
                 Finger finger = _hand.Fingers[i];
@@ -104,41 +117,45 @@ namespace When {
         }
 
         IEnumerator Recognizer() {
-            while (true) {
-                do {
-                    // Reset
-                    _isCancelled = false;
-                    yield return null;
-
-                    // OutOfRange
-                    while (_isCancelled || _pinchDistance < _desactivatePinchDist || _palmNormalDotCenterEye < 0) {
+            try {
+                while (true) {
+                    do {
+                        // Reset
                         _isCancelled = false;
                         yield return null;
+
+                        // OutOfRange
+                        while (_isCancelled || _pinchDistance < _desactivatePinchDist
+                            /* || _palmNormalDotCenterEye < 0 */) {
+                            _isCancelled = false;
+                            yield return null;
+                        }
+
+                        // Possible
+                        while (RequiredCond() && _pinchDistance > _activatePinchDist) {
+                            yield return null;
+                        }
+                    } while (!RequiredCond()); // Fail
+
+                    // Recognized !
+                    IsPinching = true;
+                    while (!_isCancelled && _pinchDistance < _desactivatePinchDist) {
+                        yield return null;
                     }
-
-                    // Possible
-                    while (RequiredCond() && _pinchDistance > _activatePinchDist) { yield return null; }
-                } while (!RequiredCond()); // Fail
-
-                // Recognized !
-                IsPinching = true;
-                while (!_isCancelled && _pinchDistance < _desactivatePinchDist) { yield return null; }
+                    IsPinching = false;
+                }
+            } finally {
                 IsPinching = false;
             }
         }
 
         bool RequiredCond() {
-            return !_isCancelled && _grabStrength < _grabStrengthThreshold && _palmNormalDotCenterEye > 0;
+            return !_isCancelled /* && _grabStrength < _grabStrengthThreshold && _palmNormalDotCenterEye > 0 */;
         }
 
         void OnDisable() {
-            StopAllCoroutines();
-            IsPinching = false;
-        }
-
-        void OnDestroy() {
-            StopAllCoroutines();
-            IsPinching = false;
+            ((IDisposable) _currentEnumerator).Dispose();
+            StopAllCoroutines(); // useless?
         }
     }
 }

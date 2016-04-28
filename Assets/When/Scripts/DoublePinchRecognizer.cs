@@ -26,9 +26,11 @@ namespace When {
 
         public void OnPinchFinish(ITransform iPosition) {
             if (_pinch1 == iPosition || _pinch2 == iPosition) {
-                _isRecognized = false;
 
-                if (OnFinish != null) OnFinish(_pinch1, _pinch2);
+                if (_isRecognized) {
+                    _isRecognized = false;
+                    if (OnFinish != null) OnFinish(_pinch1, _pinch2);
+                }
 
                 if (_pinch1 == iPosition) {
                     _pinch1 = null;

@@ -9,6 +9,7 @@ namespace When {
         [SerializeField] GameObject primitive;
         [SerializeField] float maxSize = 1;
         [SerializeField] float scaleFactor = .5f;
+        [SerializeField] bool addRigidbody = true;
 
         ITransform _t1, _t2;
         GameObject _cube;
@@ -30,7 +31,15 @@ namespace When {
 
         void Stop() {
             StopAllCoroutines();
-            //_cube.AddComponent<Rigidbody>();
+            if (addRigidbody) {
+                Vector3 force = (_t1.DeltaPosition+_t2.DeltaPosition)*2f;
+                print(force);
+                if (Mathf.Abs(force.x) < 1.5f) force.x = 0;
+                if (Mathf.Abs(force.y) < 1f) force.y = 0;
+                if (Mathf.Abs(force.z) < 1.5f) force.z = 0;
+                print(force);
+                _cube.AddComponent<Rigidbody>().AddForce(force, ForceMode.Impulse);
+            }
         }
 
         IEnumerator Create() {
