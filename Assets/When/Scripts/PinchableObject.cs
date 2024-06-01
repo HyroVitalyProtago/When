@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-using When.Interfaces;
+﻿using System;
+using UnityEngine;
 
 /*
  * TODO: Catchable -> (Pinchable, Grabbable) -> ...?
@@ -7,19 +7,27 @@ using When.Interfaces;
 
 namespace When {
     public class PinchableObject : MonoBehaviour {
-        [SerializeField] Collider collider;
+        //[SerializeField] Collider collider;
 
-        public bool IsHeld { get; protected set; }
-        public bool IsHovered { get; protected set; }
+        public event Action<bool> OnHeldChange;
 
-        public virtual void Hold(ITransform iTransform) {
-            IsHeld = true;
-            IsHovered = false;
+        bool _isHeld;
+
+        public bool IsHeld {
+            get {
+                return _isHeld;
+            }
+            set {
+                if (value != _isHeld) {
+                    _isHeld = value;
+                    if (OnHeldChange != null) {
+                        OnHeldChange(_isHeld);
+                    }
+                }
+            }
         }
 
-        public virtual void OnRelease(ITransform iTransform) {
-            IsHeld = false;
-        }
+        //public bool IsHovered { get; protected set; }
 
         //void OnTriggerEnter(Collider collider) {
         //    print("Enter");

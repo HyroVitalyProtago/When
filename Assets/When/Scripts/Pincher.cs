@@ -31,6 +31,7 @@ public class Pincher : MonoBehaviour {
         DestroyJoints(_obj.gameObject); // todo check if useful
         var child = transform.GetChild(0);
         _obj.gameObject.AddComponent<CustomFixedJoint>().Apply(child.GetComponent<Rigidbody>(), child.GetComponent<Collider>());
+        _obj.IsHeld = true;
     }
 
     void DestroyJoints(GameObject go) {
@@ -39,8 +40,9 @@ public class Pincher : MonoBehaviour {
 
     public void Finish(ITransform it) {
         if (_obj != null) {
-            DestroyJoints(_obj.gameObject);
-            StartCoroutine(Impulse(_obj.GetComponent<Rigidbody>(), it.DeltaPosition * _impulseFactor)); // Start a coroutine because DestroyJoints isn't totaly applied
+            DestroyJoints(_obj.gameObject); // maybe not...
+            _obj.IsHeld = false;
+            _obj.StartCoroutine(Impulse(_obj.GetComponent<Rigidbody>(), it.DeltaPosition * _impulseFactor)); // Start a coroutine because DestroyJoints isn't totaly applied
             _obj = null;
         }
     }

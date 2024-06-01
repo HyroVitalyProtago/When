@@ -352,6 +352,7 @@ public class OVRManager : MonoBehaviour
         }
 
 #if UNITY_ANDROID && !UNITY_EDITOR
+        print("targetFrameRate = 60");
 		Application.targetFrameRate = 60;
 		// don't allow the app to run in the background
 		Application.runInBackground = false;
@@ -374,7 +375,7 @@ public class OVRManager : MonoBehaviour
 		// This will trigger the init on the render thread
 		InitRenderThread();
 #else
-		SetEditorPlay(Application.isEditor);
+        SetEditorPlay(Application.isEditor);
 #endif
 
 		if (display == null)
@@ -518,7 +519,7 @@ public class OVRManager : MonoBehaviour
 
 		wasPositionTracked = tracker.isPositionTracked;
 		
-		if (isHSWDisplayed && Input.anyKeyDown)
+		if (isHSWDisplayed /* && Input.anyKeyDown */)
 		{
 			DismissHSWDisplay();
 			

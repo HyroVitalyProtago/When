@@ -15,7 +15,7 @@ public class Glue : MonoBehaviour {
 
     void OnCollisionEnter(Collision collision) {
         if (collision.rigidbody != null && !collision.gameObject.name.Contains("Dart")) { // TODO case of another dart
-            gameObject.AddComponent<CustomFixedJoint>().Apply(collision.rigidbody, collision.collider);
+            gameObject.AddComponent<CustomFixedJoint>().Apply(collision.rigidbody, collision.collider); // TODO check if there is already a glue
         }
     }
 }

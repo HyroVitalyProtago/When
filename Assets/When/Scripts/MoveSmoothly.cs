@@ -10,6 +10,7 @@ namespace CHSF {
 		void Start() { } // can be disabled in editor
 
 		public void Move(Vector3 endPos) {
+            StopAllCoroutines();
 			StartCoroutine(Animate(endPos));
 		}
 
